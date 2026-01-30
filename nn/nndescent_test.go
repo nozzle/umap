@@ -7,9 +7,9 @@ import (
 func generateTestData(n, dim int, seed int64) [][]float32 {
 	data := make([][]float32, n)
 	rng := seed
-	for i := 0; i < n; i++ {
+	for i := range n {
 		data[i] = make([]float32, dim)
-		for j := 0; j < dim; j++ {
+		for j := range dim {
 			rng = (rng*6364136223846793005 + 1442695040888963407) & 0x7FFFFFFF
 			data[i][j] = float32(rng) / float32(0x7FFFFFFF)
 		}
@@ -99,7 +99,7 @@ func TestRPForest(t *testing.T) {
 	}
 
 	// Test search
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		candidates := forest.SearchForest(data[i])
 		if len(candidates) == 0 {
 			t.Errorf("No candidates found for point %d", i)

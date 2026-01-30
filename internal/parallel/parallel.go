@@ -28,12 +28,9 @@ func ParallelFor(start, end, n int, fn func(i int)) {
 	var wg sync.WaitGroup
 	chunkSize := (total + n - 1) / n
 
-	for w := 0; w < n; w++ {
+	for w := range n {
 		chunkStart := start + w*chunkSize
-		chunkEnd := chunkStart + chunkSize
-		if chunkEnd > end {
-			chunkEnd = end
-		}
+		chunkEnd := min(chunkStart+chunkSize, end)
 		if chunkStart >= chunkEnd {
 			break
 		}
@@ -55,10 +52,7 @@ func ParallelFor(start, end, n int, fn func(i int)) {
 func ParallelForChunked(start, end, chunkSize, n int, fn func(chunkStart, chunkEnd int)) {
 	if n <= 1 {
 		for s := start; s < end; s += chunkSize {
-			e := s + chunkSize
-			if e > end {
-				e = end
-			}
+			e := min(s+chunkSize, end)
 			fn(s, e)
 		}
 		return
@@ -68,22 +62,17 @@ func ParallelForChunked(start, end, chunkSize, n int, fn func(chunkStart, chunkE
 	chunks := make(chan [2]int, n)
 
 	// Start workers
-	for w := 0; w < n; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range n {
+		wg.Go(func() {
 			for chunk := range chunks {
 				fn(chunk[0], chunk[1])
 			}
-		}()
+		})
 	}
 
 	// Send chunks
 	for s := start; s < end; s += chunkSize {
-		e := s + chunkSize
-		if e > end {
-			e = end
-		}
+		e := min(s+chunkSize, end)
 		chunks <- [2]int{s, e}
 	}
 	close(chunks)
@@ -105,12 +94,9 @@ func ParallelMap[T any](start, end, n int, fn func(i int) T) []T {
 	var wg sync.WaitGroup
 	chunkSize := (end - start + n - 1) / n
 
-	for w := 0; w < n; w++ {
+	for w := range n {
 		chunkStart := start + w*chunkSize
-		chunkEnd := chunkStart + chunkSize
-		if chunkEnd > end {
-			chunkEnd = end
-		}
+		chunkEnd := min(chunkStart+chunkSize, end)
 		if chunkStart >= chunkEnd {
 			break
 		}

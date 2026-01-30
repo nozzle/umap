@@ -87,8 +87,8 @@ func FuzzySimplicialSet(
 	cols := make([]int32, 0, n*k)
 	data := make([]float32, 0, n*k)
 
-	for i := 0; i < n; i++ {
-		for j := 0; j < k; j++ {
+	for i := range n {
+		for j := range k {
 			neighbor := knnIndices[i][j]
 			if neighbor < 0 {
 				continue
@@ -159,7 +159,7 @@ func smoothKNNDist(distances []float32, k, localConnectivity float64) (float32, 
 	hi := float64(1e10)
 	mid := 1.0
 
-	for iter := 0; iter < nIter; iter++ {
+	for range nIter {
 		mid = (lo + hi) / 2
 
 		// Compute current sum of membership strengths
@@ -251,7 +251,7 @@ func fuzzySetUnion(graph *CSRMatrix, mixRatio float64) *CSRMatrix {
 	edges := make(map[edgeKey]float32)
 
 	// Add original edges
-	for i := 0; i < n; i++ {
+	for i := range n {
 		start := graph.Indptr[i]
 		end := graph.Indptr[i+1]
 		for idx := start; idx < end; idx++ {

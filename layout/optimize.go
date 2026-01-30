@@ -81,7 +81,7 @@ func findABParams(minDist, spread float32) curveParameters {
 	xMax := 3.0 * float64(spread)
 	xs := make([]float64, nSamples)
 	ys := make([]float64, nSamples)
-	for i := 0; i < nSamples; i++ {
+	for i := range nSamples {
 		x := (float64(i) + 1) / float64(nSamples) * xMax
 		xs[i] = x
 		// Target function from Python UMAP
@@ -98,10 +98,10 @@ func findABParams(minDist, spread float32) curveParameters {
 	b := float64(0.9)
 
 	learningRate := 0.1
-	for iter := 0; iter < 500; iter++ {
+	for iter := range 500 {
 		// Compute gradients
 		var gradA, gradB float64
-		for i := 0; i < nSamples; i++ {
+		for i := range nSamples {
 			x := xs[i]
 			yTarget := ys[i]
 
@@ -239,7 +239,7 @@ func OptimizeLayout(
 	epochOfNextSample := make([]float32, nEdges)
 	epochOfNextNegSample := make([]float32, nEdges)
 
-	for i := 0; i < nEdges; i++ {
+	for i := range nEdges {
 		epochsPerNegSample[i] = epochsPerSample[i] / float32(config.NegativeSampleRate)
 		epochOfNextSample[i] = epochsPerSample[i]
 		epochOfNextNegSample[i] = epochsPerNegSample[i]
@@ -321,7 +321,7 @@ func OptimizeLayout(
 func applyAttractive(embedding [][]float32, i, j, dim int, a, b, alpha, moveOther float32) {
 	// Compute squared distance
 	var distSq float32
-	for d := 0; d < dim; d++ {
+	for d := range dim {
 		diff := embedding[i][d] - embedding[j][d]
 		distSq += diff * diff
 	}
@@ -339,7 +339,7 @@ func applyAttractive(embedding [][]float32, i, j, dim int, a, b, alpha, moveOthe
 	}
 
 	// Apply gradient with clipping
-	for d := 0; d < dim; d++ {
+	for d := range dim {
 		diff := embedding[i][d] - embedding[j][d]
 		grad := clip(gradCoef * diff)
 
@@ -354,7 +354,7 @@ func applyAttractive(embedding [][]float32, i, j, dim int, a, b, alpha, moveOthe
 func applyRepulsive(embedding [][]float32, i, k, dim int, a, b, alpha float32) {
 	// Compute squared distance
 	var distSq float32
-	for d := 0; d < dim; d++ {
+	for d := range dim {
 		diff := embedding[i][d] - embedding[k][d]
 		distSq += diff * diff
 	}
@@ -372,7 +372,7 @@ func applyRepulsive(embedding [][]float32, i, k, dim int, a, b, alpha float32) {
 	}
 
 	// Apply gradient with clipping
-	for d := 0; d < dim; d++ {
+	for d := range dim {
 		diff := embedding[i][d] - embedding[k][d]
 		grad := clip(gradCoef * diff)
 
@@ -419,7 +419,7 @@ func sqrt32(x float32) float32 {
 		return 0
 	}
 	z := x
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		z = (z + x/z) / 2
 	}
 	return z

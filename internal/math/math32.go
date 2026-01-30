@@ -123,10 +123,7 @@ func NormSquared(vec []float32) float32 {
 // Dot computes the dot product of two vectors.
 func Dot(a, b []float32) float32 {
 	var sum float32
-	n := len(a)
-	if len(b) < n {
-		n = len(b)
-	}
+	n := min(len(b), len(a))
 	for i := 0; i < n; i++ {
 		sum += a[i] * b[i]
 	}

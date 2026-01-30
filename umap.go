@@ -175,7 +175,7 @@ func (u *UMAP) Transform(newData [][]float32) [][]float32 {
 	n := len(newData)
 	result := make([][]float32, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		result[i] = make([]float32, u.Config.NComponents)
 
 		// Find nearest neighbor in training data and copy its embedding

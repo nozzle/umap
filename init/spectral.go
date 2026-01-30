@@ -36,7 +36,7 @@ func SpectralEmbedding(g *graph.CSRMatrix, dim int, seed int64) [][]float32 {
 
 	// Compute degrees
 	degrees := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		start := g.Indptr[i]
 		end := g.Indptr[i+1]
 		for j := start; j < end; j++ {
@@ -46,7 +46,7 @@ func SpectralEmbedding(g *graph.CSRMatrix, dim int, seed int64) [][]float32 {
 
 	// Compute D^(-1/2)
 	dInvSqrt := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if degrees[i] > 0 {
 			dInvSqrt[i] = 1.0 / math.Sqrt(degrees[i])
 		}
@@ -62,7 +62,7 @@ func SpectralEmbedding(g *graph.CSRMatrix, dim int, seed int64) [][]float32 {
 	// Build L = I - D^(-1/2) * A * D^(-1/2) as a symmetric matrix
 	// First build as dense, then convert to symmetric
 	lData := make([]float64, n*n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		lData[i*n+i] = 1.0 // Identity diagonal
 
 		start := g.Indptr[i]
@@ -76,7 +76,7 @@ func SpectralEmbedding(g *graph.CSRMatrix, dim int, seed int64) [][]float32 {
 	}
 
 	// Symmetrize by averaging L[i,j] and L[j,i]
-	for i := 0; i < n; i++ {
+	for i := range n {
 		for j := i + 1; j < n; j++ {
 			avg := (lData[i*n+j] + lData[j*n+i]) / 2
 			lData[i*n+j] = avg
@@ -105,9 +105,9 @@ func SpectralEmbedding(g *graph.CSRMatrix, dim int, seed int64) [][]float32 {
 		vector []float64
 	}
 	pairs := make([]eigenPair, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		vec := make([]float64, n)
-		for j := 0; j < n; j++ {
+		for j := range n {
 			vec[j] = eigenvectors.At(j, i)
 		}
 		pairs[i] = eigenPair{eigenvalues[i], vec}
@@ -118,9 +118,9 @@ func SpectralEmbedding(g *graph.CSRMatrix, dim int, seed int64) [][]float32 {
 
 	// Skip the first eigenvector (constant) and take the next 'dim' ones
 	result := make([][]float32, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		result[i] = make([]float32, dim)
-		for d := 0; d < dim; d++ {
+		for d := range dim {
 			if d+1 < len(pairs) {
 				result[i][d] = float32(pairs[d+1].vector[i])
 			}
@@ -138,9 +138,9 @@ func RandomEmbedding(n, dim int, seed int64) [][]float32 {
 	rng := rand.New(seed)
 
 	result := make([][]float32, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		result[i] = make([]float32, dim)
-		for d := 0; d < dim; d++ {
+		for d := range dim {
 			// Uniform in [-10, 10] as in the original UMAP
 			result[i][d] = (rand.Float32(&rng) - 0.5) * 20
 		}
@@ -177,26 +177,26 @@ func scaleAndCenter(embedding [][]float32) {
 
 	// Compute mean for each dimension
 	means := make([]float64, dim)
-	for i := 0; i < n; i++ {
-		for d := 0; d < dim; d++ {
+	for i := range n {
+		for d := range dim {
 			means[d] += float64(embedding[i][d])
 		}
 	}
-	for d := 0; d < dim; d++ {
+	for d := range dim {
 		means[d] /= float64(n)
 	}
 
 	// Center
-	for i := 0; i < n; i++ {
-		for d := 0; d < dim; d++ {
+	for i := range n {
+		for d := range dim {
 			embedding[i][d] -= float32(means[d])
 		}
 	}
 
 	// Compute max absolute value
 	maxAbs := float32(0)
-	for i := 0; i < n; i++ {
-		for d := 0; d < dim; d++ {
+	for i := range n {
+		for d := range dim {
 			val := embedding[i][d]
 			if val < 0 {
 				val = -val
@@ -210,8 +210,8 @@ func scaleAndCenter(embedding [][]float32) {
 	// Scale to [-10, 10]
 	if maxAbs > 0 {
 		scale := 10.0 / maxAbs
-		for i := 0; i < n; i++ {
-			for d := 0; d < dim; d++ {
+		for i := range n {
+			for d := range dim {
 				embedding[i][d] *= scale
 			}
 		}
@@ -230,13 +230,13 @@ func NormalizeCoordsTo01(embedding [][]float32) {
 	// Find min/max for each dimension
 	mins := make([]float32, dim)
 	maxs := make([]float32, dim)
-	for d := 0; d < dim; d++ {
+	for d := range dim {
 		mins[d] = embedding[0][d]
 		maxs[d] = embedding[0][d]
 	}
 
 	for i := 1; i < n; i++ {
-		for d := 0; d < dim; d++ {
+		for d := range dim {
 			if embedding[i][d] < mins[d] {
 				mins[d] = embedding[i][d]
 			}
@@ -247,10 +247,10 @@ func NormalizeCoordsTo01(embedding [][]float32) {
 	}
 
 	// Normalize
-	for d := 0; d < dim; d++ {
+	for d := range dim {
 		spread := maxs[d] - mins[d]
 		if spread > 0 {
-			for i := 0; i < n; i++ {
+			for i := range n {
 				embedding[i][d] = (embedding[i][d] - mins[d]) / spread
 			}
 		}

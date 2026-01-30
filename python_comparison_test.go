@@ -211,7 +211,7 @@ func computePairwiseDistances(embedding [][]float32) []float64 {
 	n := len(embedding)
 	distances := make([]float64, 0, n*(n-1)/2)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		for j := i + 1; j < n; j++ {
 			dist := euclideanDistance(embedding[i], embedding[j])
 			distances = append(distances, dist)

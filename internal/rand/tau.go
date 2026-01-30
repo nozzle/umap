@@ -17,7 +17,7 @@ func New(seed int64) State {
 	s[1] = s[0]*6364136223846793005 + 1442695040888963407
 	s[2] = s[1]*6364136223846793005 + 1442695040888963407
 	// Warm up
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		Int(&s)
 	}
 	return s
@@ -95,7 +95,7 @@ func sqrt(x float64) float64 {
 		return 0
 	}
 	z := x
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		z = (z + x/z) / 2
 	}
 	return z

@@ -17,7 +17,7 @@ func generateBlobs(nSamples, nClusters, nFeatures int, seed int64) [][]float32 {
 		return float32(rng) / float32(0x7FFFFFFF)
 	}
 
-	for i := 0; i < nSamples; i++ {
+	for i := range nSamples {
 		data[i] = make([]float32, nFeatures)
 		cluster := i / samplesPerCluster
 		if cluster >= nClusters {
@@ -27,7 +27,7 @@ func generateBlobs(nSamples, nClusters, nFeatures int, seed int64) [][]float32 {
 		// Cluster center
 		centerOffset := float32(cluster * 10)
 
-		for j := 0; j < nFeatures; j++ {
+		for j := range nFeatures {
 			// Add Gaussian-like noise using Box-Muller-ish
 			u1 := nextFloat()
 			u2 := nextFloat()
@@ -83,7 +83,7 @@ func TestFitTransform(t *testing.T) {
 	intraCount := 0
 	interCount := 0
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		for j := i + 1; j < 100; j++ {
 			clusterI := i / samplesPerCluster
 			clusterJ := j / samplesPerCluster

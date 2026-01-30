@@ -33,7 +33,7 @@ func TestFuzzySimplicialSet(t *testing.T) {
 	// Check symmetry (since we apply set operations)
 	rows, cols, data := graph.GetEdges()
 	edgeMap := make(map[[2]int32]float32)
-	for i := 0; i < len(rows); i++ {
+	for i := range rows {
 		edgeMap[[2]int32{rows[i], cols[i]}] = data[i]
 	}
 

@@ -21,7 +21,7 @@ func New(k int) *MaxHeap {
 		K:         k,
 	}
 	// Initialize with sentinel values
-	for i := 0; i < k; i++ {
+	for i := range k {
 		h.Indices[i] = -1
 		h.Distances[i] = 1e30 // Large value
 		h.Flags[i] = 0
@@ -200,7 +200,7 @@ func SimpleHeapPush(
 	}
 
 	// Check duplicates
-	for i := 0; i < k; i++ {
+	for i := range k {
 		if indices[i] == idx {
 			return false
 		}
@@ -254,7 +254,7 @@ func FlaggedHeapPush(
 		return false
 	}
 
-	for i := 0; i < k; i++ {
+	for i := range k {
 		if indices[i] == idx {
 			return false
 		}

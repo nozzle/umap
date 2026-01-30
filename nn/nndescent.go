@@ -118,7 +118,7 @@ func NNDescent(data [][]float32, config NNDescentConfig) *KNNGraph {
 			newCandidates[i] = newCandidates[i][:0]
 		}
 
-		for i := 0; i < n; i++ {
+		for i := range n {
 			for j := 0; j < k; j++ {
 				neighbor := indices[i][j]
 				if neighbor < 0 {
@@ -143,7 +143,7 @@ func NNDescent(data [][]float32, config NNDescentConfig) *KNNGraph {
 		}
 
 		// Mark all current neighbors as old
-		for i := 0; i < n; i++ {
+		for i := range n {
 			for j := 0; j < k; j++ {
 				flags[i][j] = 0
 			}
@@ -161,7 +161,7 @@ func NNDescent(data [][]float32, config NNDescentConfig) *KNNGraph {
 	}
 
 	// Sort results by distance
-	for i := 0; i < n; i++ {
+	for i := range n {
 		heap.DeheapSort(indices[i], distances[i], k)
 	}
 
@@ -307,10 +307,7 @@ func sampleCandidates(candidates []int32, rho float32, rng *rand.State) []int32 
 		return candidates
 	}
 
-	targetSize := int(float32(len(candidates)) * rho)
-	if targetSize < 1 {
-		targetSize = 1
-	}
+	targetSize := max(int(float32(len(candidates))*rho), 1)
 	if targetSize >= len(candidates) {
 		return candidates
 	}
@@ -349,7 +346,7 @@ func BruteForceKNN(data [][]float32, k int, metric string) *KNNGraph {
 		}
 
 		// Compute distance to all other points
-		for j := 0; j < n; j++ {
+		for j := range n {
 			if i == j {
 				continue
 			}

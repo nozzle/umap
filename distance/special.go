@@ -198,9 +198,9 @@ func Mahalanobis(x, y []float32, vinv []float32) float32 {
 	}
 
 	var sum float32
-	for i := 0; i < n; i++ {
+	for i := range n {
 		var inner float32
-		for j := 0; j < n; j++ {
+		for j := range n {
 			inner += vinv[i*n+j] * diff[j]
 		}
 		sum += diff[i] * inner

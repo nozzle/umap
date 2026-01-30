@@ -111,13 +111,13 @@ func buildRPTree(data [][]float32, indices []int32, leafSize int, angular bool, 
 	if angular {
 		// For angular metrics, normalize the hyperplane
 		var normSq float32
-		for d := 0; d < dim; d++ {
+		for d := range dim {
 			hyperplane[d] = p2[d] - p1[d]
 			normSq += hyperplane[d] * hyperplane[d]
 		}
 		if normSq > 0 {
 			invNorm := 1.0 / sqrt32(normSq)
-			for d := 0; d < dim; d++ {
+			for d := range dim {
 				hyperplane[d] *= invNorm
 			}
 		}
@@ -126,7 +126,7 @@ func buildRPTree(data [][]float32, indices []int32, leafSize int, angular bool, 
 	} else {
 		// For Euclidean metrics, use the midpoint
 		var midpoint float32
-		for d := 0; d < dim; d++ {
+		for d := range dim {
 			hyperplane[d] = p2[d] - p1[d]
 			midpoint += (p1[d] + p2[d]) / 2 * hyperplane[d]
 		}
@@ -140,7 +140,7 @@ func buildRPTree(data [][]float32, indices []int32, leafSize int, angular bool, 
 	for _, idx := range indices {
 		var side float32
 		point := data[idx]
-		for d := 0; d < dim; d++ {
+		for d := range dim {
 			side += point[d] * hyperplane[d]
 		}
 
@@ -176,7 +176,7 @@ func (t *RPTree) SearchTree(query []float32) []int32 {
 	}
 
 	var side float32
-	for d := 0; d < len(query); d++ {
+	for d := range query {
 		side += query[d] * t.Hyperplane[d]
 	}
 
@@ -220,7 +220,7 @@ func InitializeFromForest(data [][]float32, k int, forest *RPForest, metric stri
 	indices := make([][]int32, n)
 	dists := make([][]float32, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		// Get candidates from forest
 		candidates := forest.SearchForest(data[i])
 
@@ -248,7 +248,7 @@ func InitializeFromForest(data [][]float32, k int, forest *RPForest, metric stri
 	}
 
 	// Sort results
-	for i := 0; i < n; i++ {
+	for i := range n {
 		sortNeighbors(indices[i], dists[i])
 	}
 
@@ -267,7 +267,7 @@ func simpleHeapPush(indices []int32, dists []float32, k int, idx int32, dist flo
 	}
 
 	// Check for duplicates
-	for i := 0; i < k; i++ {
+	for i := range k {
 		if indices[i] == idx {
 			return false
 		}
@@ -359,7 +359,7 @@ func sqrt32(x float32) float32 {
 	}
 	// Newton's method
 	z := x
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		z = (z + x/z) / 2
 	}
 	return z
