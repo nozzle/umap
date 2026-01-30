@@ -1,0 +1,14 @@
+[project]
+name = "umap-test-comparison"
+version = "0.1.0"
+description = "Python UMAP reference implementation for Go test comparison"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "numpy>=1.26.0",
+    "scikit-learn>=1.4.0",
+    "numba>=0.60.0",
+    "umap-learn>=0.5.7",
+]
+
+[dependency-groups]
+dev = []
