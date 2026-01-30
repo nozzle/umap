@@ -54,6 +54,11 @@ func DefaultFuzzySimplicialSetConfig() FuzzySimplicialSetConfig {
 
 // FuzzySimplicialSet constructs a fuzzy simplicial set from k-NN data.
 // This is the core of UMAP's topological representation.
+//
+// IMPORTANT: knnIndices and knnDistances are expected to include self as the first
+// neighbor (matching sklearn's NearestNeighbors output). This function will skip
+// self when computing sigma/rho (matching Python's knn_dists[:, 1:] behavior)
+// and also skip self-edges when building the graph.
 func FuzzySimplicialSet(
 	knnIndices [][]int32,
 	knnDistances [][]float32,
@@ -71,18 +76,22 @@ func FuzzySimplicialSet(
 	}
 
 	// Compute smooth k-NN distances (sigma and rho for each point)
+	// Python UMAP uses knn_dists[:, 1:] to skip self-distance
 	sigmas := make([]float32, n)
 	rhos := make([]float32, n)
 
 	parallel.ParallelFor(0, n, numWorkers, func(i int) {
+		// Skip self-distance (first element) - matches Python's knn_dists[:, 1:]
+		distsNoSelf := knnDistances[i][1:]
 		sigmas[i], rhos[i] = smoothKNNDist(
-			knnDistances[i],
-			float64(k),
+			distsNoSelf,
+			float64(k-1), // k-1 because we excluded self
 			config.LocalConnectivity,
 		)
 	})
 
 	// Compute membership strengths
+	// Skip self-edges (where neighbor == point itself)
 	rows := make([]int32, 0, n*k)
 	cols := make([]int32, 0, n*k)
 	data := make([]float32, 0, n*k)
@@ -90,7 +99,8 @@ func FuzzySimplicialSet(
 	for i := range n {
 		for j := range k {
 			neighbor := knnIndices[i][j]
-			if neighbor < 0 {
+			// Skip self-edges and invalid indices
+			if neighbor < 0 || neighbor == int32(i) {
 				continue
 			}
 			dist := knnDistances[i][j]
@@ -123,69 +133,112 @@ func FuzzySimplicialSet(
 
 // smoothKNNDist computes the smooth distance normalization parameters.
 // Returns sigma (bandwidth) and rho (distance to nearest neighbor).
+//
+// This matches Python UMAP's smooth_knn_dist function exactly:
+// - distances should be the k nearest neighbor distances (excluding self)
+// - rho is computed from non-zero distances based on local_connectivity
+// - The sum for sigma is computed over distances[1:] (skipping first distance)
+// - When binary search doesn't converge, sigma may be very large (Python returns inf)
 func smoothKNNDist(distances []float32, k, localConnectivity float64) (float32, float32) {
 	const (
-		nIter     = 64   // Binary search iterations
-		bandwidth = 1.0  // Target bandwidth in perplexity-like units
-		minKDist  = 1e-8 // Minimum distance to avoid numerical issues
+		nIter           = 64   // Binary search iterations
+		bandwidth       = 1.0  // Target bandwidth in perplexity-like units
+		smoothTolerance = 1e-5 // Convergence tolerance
+		minKDistScale   = 1e-3 // Minimum sigma as fraction of mean distance
 	)
 
-	// Rho is the distance to the kth nearest neighbor based on local connectivity
-	rhoIdx := int(math.Floor(localConnectivity))
-	rhoFrac := localConnectivity - float64(rhoIdx)
-
-	var rho float32
-	if rhoIdx < len(distances) {
-		rho = distances[rhoIdx]
-		if rhoIdx+1 < len(distances) {
-			rho = float32((1.0-rhoFrac)*float64(rho) + rhoFrac*float64(distances[rhoIdx+1]))
+	// Filter non-zero distances (matching Python's non_zero_dists = ith_distances[ith_distances > 0.0])
+	nonZeroDists := make([]float32, 0, len(distances))
+	for _, d := range distances {
+		if d > 0 {
+			nonZeroDists = append(nonZeroDists, d)
 		}
 	}
 
-	// If rho is 0, use the minimum non-zero distance
-	if rho <= 0 {
-		for _, d := range distances {
-			if d > 0 && (rho == 0 || d < rho) {
+	// Compute rho based on local connectivity (matching Python exactly)
+	// Python: index = int(np.floor(local_connectivity))
+	//         if index > 0: rho = non_zero_dists[index - 1]
+	//         else: rho = interpolation * non_zero_dists[0]
+	var rho float32
+	index := int(math.Floor(localConnectivity))
+	interpolation := float32(localConnectivity - float64(index))
+
+	if len(nonZeroDists) >= int(localConnectivity) {
+		if index > 0 {
+			rho = nonZeroDists[index-1]
+			if interpolation > smoothTolerance && index < len(nonZeroDists) {
+				rho += interpolation * (nonZeroDists[index] - nonZeroDists[index-1])
+			}
+		} else {
+			rho = interpolation * nonZeroDists[0]
+		}
+	} else if len(nonZeroDists) > 0 {
+		// Fallback: use max non-zero distance
+		rho = nonZeroDists[len(nonZeroDists)-1]
+		for _, d := range nonZeroDists {
+			if d > rho {
 				rho = d
 			}
 		}
 	}
 
+	// Compute mean distance for minimum sigma calculation
+	var meanDist float32
+	for _, d := range distances {
+		meanDist += d
+	}
+	if len(distances) > 0 {
+		meanDist /= float32(len(distances))
+	}
+
 	// Target sum of membership strengths
 	target := math.Log2(k) * bandwidth
 
-	// Binary search for sigma
+	// Binary search for sigma (matching Python's algorithm)
+	// Python uses inf for hi and mid *= 2 when hi is still inf
 	lo := float64(0.0)
-	hi := float64(1e10)
+	hi := math.Inf(1)
 	mid := 1.0
 
 	for range nIter {
-		mid = (lo + hi) / 2
-
 		// Compute current sum of membership strengths
+		// IMPORTANT: Python's loop is "for j in range(1, distances.shape[1])"
+		// which skips the first distance (j=0)
 		sum := 0.0
-		for _, d := range distances {
-			if float64(d) <= float64(rho) {
-				sum += 1.0
+		for i := 1; i < len(distances); i++ {
+			d := float64(distances[i]) - float64(rho)
+			if d > 0 {
+				sum += math.Exp(-d / mid)
 			} else {
-				sum += math.Exp(-(float64(d) - float64(rho)) / mid)
+				sum += 1.0
 			}
 		}
 
-		if math.Abs(sum-target) < 1e-5 {
+		if math.Abs(sum-target) < smoothTolerance {
 			break
 		}
 
-		if sum < target {
-			lo = mid
-		} else {
+		if sum > target {
 			hi = mid
+			mid = (lo + hi) / 2.0
+		} else {
+			lo = mid
+			if math.IsInf(hi, 1) {
+				mid *= 2
+			} else {
+				mid = (lo + hi) / 2.0
+			}
 		}
 	}
 
 	sigma := float32(mid)
-	if sigma < float32(minKDist) {
-		sigma = float32(minKDist)
+
+	// Apply minimum sigma threshold (matching Python)
+	if rho > 0 {
+		minSigma := minKDistScale * meanDist
+		if sigma < minSigma {
+			sigma = minSigma
+		}
 	}
 
 	return sigma, rho

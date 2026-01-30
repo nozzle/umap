@@ -314,10 +314,11 @@ func sampleCandidates(candidates []int32, rho float32, rng *rand.State) []int32 
 
 // BruteForceKNN computes exact k-NN using brute force.
 // This is used for small datasets or as a fallback.
+// Note: k includes self as the first neighbor (distance 0) to match Python sklearn behavior.
 func BruteForceKNN(data [][]float32, k int, metric string) *KNNGraph {
 	n := len(data)
-	if k >= n {
-		k = n - 1
+	if k > n {
+		k = n
 	}
 
 	distFunc, ok := distance.Get(metric)
@@ -334,11 +335,14 @@ func BruteForceKNN(data [][]float32, k int, metric string) *KNNGraph {
 		indices[i] = make([]int32, k)
 		distances[i] = make([]float32, k)
 
-		// Initialize heap
+		// Initialize heap with sentinel values
 		for j := 0; j < k; j++ {
 			indices[i][j] = -1
 			distances[i][j] = 1e30
 		}
+
+		// Include self as first neighbor (distance 0) - matches Python sklearn
+		heap.SimpleHeapPush(indices[i], distances[i], k, int32(i), 0)
 
 		// Compute distance to all other points
 		for j := range n {

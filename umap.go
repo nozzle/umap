@@ -16,6 +16,7 @@ package umap
 import (
 	"github.com/nozzle/umap/graph"
 	umapinit "github.com/nozzle/umap/init"
+	"github.com/nozzle/umap/internal/rand"
 	"github.com/nozzle/umap/layout"
 	"github.com/nozzle/umap/nn"
 )
@@ -156,11 +157,21 @@ func (u *UMAP) Fit(data [][]float32) {
 	// Step 2: Construct fuzzy simplicial set
 	u.graph = u.buildFuzzySimplicialSet()
 
-	// Step 3: Initialize embedding
-	u.embedding = u.initializeEmbedding(n)
+	// Step 3: Initialize embedding using MT19937
+	// This matches Python's numpy.random.RandomState(seed)
+	mt := rand.NewMT19937(uint32(u.Config.Seed))
+	u.embedding = u.initializeEmbeddingWithRNG(n, mt)
 
-	// Step 4: Optimize layout
-	u.optimizeLayout(nEpochs)
+	// Step 4: Generate rng_state for SGD from the same MT19937
+	// This matches Python: random_state.randint(INT32_MIN, INT32_MAX, 3)
+	rngState := []int64{
+		int64(mt.RandInt32()),
+		int64(mt.RandInt32()),
+		int64(mt.RandInt32()),
+	}
+
+	// Step 5: Optimize layout with the correct rng_state
+	u.optimizeLayoutWithRNGState(nEpochs, rngState)
 }
 
 // Transform transforms new data using the fitted model.
@@ -256,6 +267,46 @@ func (u *UMAP) initializeEmbedding(n int) [][]float32 {
 	)
 }
 
+// initializeEmbeddingWithRNG creates the initial embedding using the provided MT19937 RNG.
+// This allows the RNG state to be continued for SGD initialization.
+func (u *UMAP) initializeEmbeddingWithRNG(n int, mt *rand.MT19937) [][]float32 {
+	switch u.Config.Init {
+	case "random":
+		// Use the provided MT19937 directly for NumPy compatibility
+		return randomEmbeddingWithMT(n, u.Config.NComponents, mt)
+	case "spectral":
+		// For spectral, use the standard method
+		// Note: spectral init doesn't consume from the random state in the same way
+		return umapinit.InitializeEmbedding(
+			u.graph,
+			n,
+			u.Config.NComponents,
+			umapinit.Spectral,
+			u.Config.Seed,
+		)
+	default:
+		return umapinit.InitializeEmbedding(
+			u.graph,
+			n,
+			u.Config.NComponents,
+			umapinit.Spectral,
+			u.Config.Seed,
+		)
+	}
+}
+
+// randomEmbeddingWithMT generates a random embedding using MT19937.
+func randomEmbeddingWithMT(n, dim int, mt *rand.MT19937) [][]float32 {
+	result := make([][]float32, n)
+	for i := range n {
+		result[i] = make([]float32, dim)
+		for d := range dim {
+			result[i][d] = mt.UniformFloat32(-10.0, 10.0)
+		}
+	}
+	return result
+}
+
 // optimizeLayout runs the SGD optimization.
 func (u *UMAP) optimizeLayout(nEpochs int) {
 	config := layout.DefaultLayoutConfig()
@@ -268,6 +319,24 @@ func (u *UMAP) optimizeLayout(nEpochs int) {
 	config.NumWorkers = u.Config.NumWorkers
 	config.Verbose = u.Config.Verbose
 	config.ProgressCallback = u.Config.ProgressCallback
+
+	layout.OptimizeLayout(u.embedding, u.graph, config)
+}
+
+// optimizeLayoutWithRNGState runs the SGD optimization with a specific RNG state.
+// This allows for exact reproducibility matching Python UMAP.
+func (u *UMAP) optimizeLayoutWithRNGState(nEpochs int, rngState []int64) {
+	config := layout.DefaultLayoutConfig()
+	config.MinDist = u.Config.MinDist
+	config.Spread = u.Config.Spread
+	config.NEpochs = nEpochs
+	config.LearningRate = u.Config.LearningRate
+	config.NegativeSampleRate = u.Config.NegativeSampleRate
+	config.Seed = u.Config.Seed
+	config.NumWorkers = u.Config.NumWorkers
+	config.Verbose = u.Config.Verbose
+	config.ProgressCallback = u.Config.ProgressCallback
+	config.RNGState = rngState
 
 	layout.OptimizeLayout(u.embedding, u.graph, config)
 }

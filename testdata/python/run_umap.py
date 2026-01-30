@@ -60,6 +60,9 @@ def main():
         "--epochs", type=int, default=200, help="Number of training epochs"
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument(
+        "--init", default="spectral", help="Initialization method (spectral or random)"
+    )
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
 
     args = parser.parse_args()
@@ -83,6 +86,7 @@ def main():
         spread=args.spread,
         n_epochs=args.epochs,
         random_state=args.seed,
+        init=args.init,
         verbose=args.verbose,
     )
 

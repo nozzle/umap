@@ -134,15 +134,16 @@ func SpectralEmbedding(g *graph.CSRMatrix, dim int, seed int64) [][]float32 {
 }
 
 // RandomEmbedding generates a random embedding.
+// Uses MT19937 for NumPy compatibility.
 func RandomEmbedding(n, dim int, seed int64) [][]float32 {
-	rng := rand.New(seed)
+	rng := rand.NewMT19937(uint32(seed))
 
 	result := make([][]float32, n)
 	for i := range n {
 		result[i] = make([]float32, dim)
 		for d := range dim {
 			// Uniform in [-10, 10] as in the original UMAP
-			result[i][d] = (rand.Float32(&rng) - 0.5) * 20
+			result[i][d] = rng.UniformFloat32(-10.0, 10.0)
 		}
 	}
 

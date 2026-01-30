@@ -84,6 +84,7 @@ func TestPythonComparison(t *testing.T) {
 		"--spread", fmt.Sprintf("%f", params.spread),
 		"--epochs", strconv.Itoa(params.epochs),
 		"--seed", strconv.FormatInt(params.seed, 10),
+		"--init", "random",
 	)
 	pythonCmd.Dir = pythonDir
 	pythonCmd.Stdout = os.Stdout

@@ -35,11 +35,12 @@ func TestBruteForceKNN(t *testing.T) {
 			t.Errorf("Point %d has %d neighbors, expected %d", i, len(graph.Indices[i]), graph.K)
 		}
 
-		// Check no self-loops
-		for j := 0; j < graph.K; j++ {
-			if graph.Indices[i][j] == int32(i) {
-				t.Errorf("Self-loop found at point %d", i)
-			}
+		// Check that first neighbor is self (matching sklearn behavior)
+		if graph.Indices[i][0] != int32(i) {
+			t.Errorf("First neighbor of point %d is %d, expected self (%d)", i, graph.Indices[i][0], i)
+		}
+		if graph.Distances[i][0] != 0 {
+			t.Errorf("Distance to self for point %d is %f, expected 0", i, graph.Distances[i][0])
 		}
 
 		// Check distances are sorted
