@@ -307,6 +307,9 @@ func fuzzySetUnion(graph *CSRMatrix, mixRatio float64) *CSRMatrix {
 
 // ToEpochsPerSample converts edge weights to epochs per sample for optimization.
 // This determines how frequently each edge should be sampled during SGD.
+// The formula matches Python UMAP: epochs_per_sample = max_weight / weight
+// This means the highest-weighted edge is sampled every epoch (epochs_per_sample=1),
+// and lower-weighted edges are sampled less frequently.
 func ToEpochsPerSample(graph *CSRMatrix, nEpochs int) []float32 {
 	if graph.NNZ == 0 {
 		return nil
@@ -324,11 +327,12 @@ func ToEpochsPerSample(graph *CSRMatrix, nEpochs int) []float32 {
 		return make([]float32, graph.NNZ)
 	}
 
-	// Compute epochs per sample
+	// Compute epochs per sample (matching Python UMAP)
+	// epochs_per_sample = max_weight / weight
 	result := make([]float32, graph.NNZ)
 	for i, w := range graph.Data {
 		if w > 0 {
-			result[i] = float32(nEpochs) * (maxWeight / w)
+			result[i] = maxWeight / w
 		} else {
 			result[i] = -1 // Skip this edge
 		}

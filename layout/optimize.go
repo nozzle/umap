@@ -53,34 +53,157 @@ type curveParameters struct {
 // findABParams finds parameters a, b such that:
 // 1 / (1 + a * d^(2b)) approximates a smooth curve with:
 // - value 1 at d = 0
-// - value 0.5 at d = minDist
+// - value ~1 at d <= minDist
+// - value ~0 at d = spread
 // - approaching 0 as d -> infinity
+//
+// This matches the Python UMAP implementation which uses curve_fit to find
+// optimal parameters. We use a simple optimization approach here.
 func findABParams(minDist, spread float32) curveParameters {
-	// Use the approximation from the UMAP paper
-	// For typical values, this gives reasonable results
-	// A more accurate approach would use scipy.optimize.curve_fit
-
-	// Simple approximation based on minDist and spread
-	// These formulas are derived from fitting the original UMAP curve
 	if minDist <= 0 {
 		minDist = 0.001
 	}
-
-	// Target: 1 / (1 + a * minDist^(2*b)) = 0.5
-	// => a * minDist^(2*b) = 1
-	// => log(a) + 2*b*log(minDist) = 0
-	// => log(a) = -2*b*log(minDist)
-
-	// Use b = 1 as a starting point and adjust
-	b := float32(1.0)
-	if spread > 1 {
-		b = 1.0 / spread
+	if spread <= 0 {
+		spread = 1.0
 	}
 
-	// a = 1 / minDist^(2*b)
-	a := 1.0 / pow32(minDist, 2*b)
+	// The target curve in Python UMAP is:
+	// if x < minDist: y = 1.0
+	// else: y = exp(-(x - minDist) / spread)
+	//
+	// We fit: 1 / (1 + a * x^(2*b)) to this curve
+	//
+	// Use a simple grid search / optimization to find good a, b
+	// that minimize error on sample points
 
-	return curveParameters{a: a, b: b}
+	// Sample points for fitting
+	nSamples := 300
+	xMax := 3.0 * float64(spread)
+	xs := make([]float64, nSamples)
+	ys := make([]float64, nSamples)
+	for i := 0; i < nSamples; i++ {
+		x := (float64(i) + 1) / float64(nSamples) * xMax
+		xs[i] = x
+		// Target function from Python UMAP
+		if x < float64(minDist) {
+			ys[i] = 1.0
+		} else {
+			ys[i] = fastExp(-(x - float64(minDist)) / float64(spread))
+		}
+	}
+
+	// Optimize a and b using simple gradient descent
+	// Start with reasonable initial values
+	a := float64(1.5)
+	b := float64(0.9)
+
+	learningRate := 0.1
+	for iter := 0; iter < 500; iter++ {
+		// Compute gradients
+		var gradA, gradB float64
+		for i := 0; i < nSamples; i++ {
+			x := xs[i]
+			yTarget := ys[i]
+
+			// y = 1 / (1 + a * x^(2b))
+			x2b := fastPow(x, 2*b)
+			denom := 1.0 + a*x2b
+			yPred := 1.0 / denom
+
+			// Error
+			err := yPred - yTarget
+
+			// dy/da = -x^(2b) / (1 + a*x^(2b))^2
+			dydA := -x2b / (denom * denom)
+
+			// dy/db = -2*a*x^(2b)*ln(x) / (1 + a*x^(2b))^2
+			lnX := 0.0
+			if x > 0 {
+				lnX = fastLog(x)
+			}
+			dydB := -2 * a * x2b * lnX / (denom * denom)
+
+			gradA += err * dydA
+			gradB += err * dydB
+		}
+		gradA /= float64(nSamples)
+		gradB /= float64(nSamples)
+
+		// Update with gradient descent
+		a -= learningRate * gradA
+		b -= learningRate * gradB
+
+		// Keep parameters in reasonable range
+		if a < 0.01 {
+			a = 0.01
+		}
+		if a > 100 {
+			a = 100
+		}
+		if b < 0.1 {
+			b = 0.1
+		}
+		if b > 2.0 {
+			b = 2.0
+		}
+
+		// Reduce learning rate
+		if iter%100 == 99 {
+			learningRate *= 0.5
+		}
+	}
+
+	return curveParameters{a: float32(a), b: float32(b)}
+}
+
+// fastExp computes exp(x) quickly for optimization
+func fastExp(x float64) float64 {
+	if x > 88 {
+		return 1e38
+	}
+	if x < -88 {
+		return 0
+	}
+	// Use Taylor series
+	sum := 1.0
+	term := 1.0
+	for i := 1; i < 30; i++ {
+		term *= x / float64(i)
+		sum += term
+		if term < 1e-15 && term > -1e-15 {
+			break
+		}
+	}
+	return sum
+}
+
+// fastPow computes x^y quickly for optimization
+func fastPow(x, y float64) float64 {
+	if x <= 0 {
+		return 0
+	}
+	return fastExp(y * fastLog(x))
+}
+
+// fastLog computes ln(x) quickly for optimization
+func fastLog(x float64) float64 {
+	if x <= 0 {
+		return -1e38
+	}
+	// Use the identity: ln(x) = 2 * arctanh((x-1)/(x+1))
+	// Which converges as: 2 * sum_{n=0}^inf (1/(2n+1)) * ((x-1)/(x+1))^(2n+1)
+	y := (x - 1) / (x + 1)
+	y2 := y * y
+	sum := y
+	term := y
+	for i := 1; i < 100; i++ {
+		term *= y2
+		sum += term / float64(2*i+1)
+		if term < 1e-15 && term > -1e-15 {
+			break
+		}
+	}
+	return 2 * sum
 }
 
 // OptimizeLayout runs the SGD optimization loop.

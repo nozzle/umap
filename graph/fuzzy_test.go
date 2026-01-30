@@ -80,14 +80,21 @@ func TestToEpochsPerSample(t *testing.T) {
 		t.Errorf("Expected 4 epochs values, got %d", len(epochs))
 	}
 
-	// Maximum weight edge should have epochs = nEpochs
-	if epochs[0] != 100 {
-		t.Errorf("Max weight edge should have 100 epochs, got %f", epochs[0])
+	// Maximum weight edge (weight=1.0) should have epochs_per_sample = 1.0
+	// This means it's sampled every epoch
+	if epochs[0] != 1.0 {
+		t.Errorf("Max weight edge should have epochs_per_sample=1.0, got %f", epochs[0])
 	}
 
-	// Half weight should have double epochs
-	if epochs[1] != 200 {
-		t.Errorf("Half weight edge should have 200 epochs, got %f", epochs[1])
+	// Half weight (0.5) should have epochs_per_sample = 2.0
+	// This means it's sampled every 2 epochs
+	if epochs[1] != 2.0 {
+		t.Errorf("Half weight edge should have epochs_per_sample=2.0, got %f", epochs[1])
+	}
+
+	// Quarter weight (0.25) should have epochs_per_sample = 4.0
+	if epochs[3] != 4.0 {
+		t.Errorf("Quarter weight edge should have epochs_per_sample=4.0, got %f", epochs[3])
 	}
 
 	t.Logf("Epochs per sample: %v", epochs)
