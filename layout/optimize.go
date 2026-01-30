@@ -104,7 +104,7 @@ func findABParams(minDist, spread float32) curveParameters {
 	// Levenberg-Marquardt with adaptive damping
 	lambda := 0.001
 
-	for iter := 0; iter < 1000; iter++ {
+	for range 1000 {
 		// Compute Jacobian and residuals
 		var jTj00, jTj01, jTj11 float64 // J^T * J matrix elements
 		var jTr0, jTr1 float64          // J^T * r vector elements
@@ -350,7 +350,7 @@ func OptimizeLayout(
 			})
 		} else {
 			// Sequential processing (reproducible)
-			for edge := 0; edge < nEdges; edge++ {
+			for edge := range nEdges {
 				processEdgePython(embedding, heads, tails, epochsPerSample, epochsPerNegSample,
 					epochOfNextSample, epochOfNextNegSample, edge, epoch, n, dim, a, b, alpha, moveOther, rngStatePerSample)
 			}
@@ -422,10 +422,7 @@ func processEdgePython(
 	epochOfNextSample[edge] += epochsPerSample[edge]
 
 	// Calculate number of negative samples (matching Python exactly)
-	nNegSamples := int((float32(epoch) - epochOfNextNegSample[edge]) / epochsPerNegSample[edge])
-	if nNegSamples < 0 {
-		nNegSamples = 0
-	}
+	nNegSamples := max(int((float32(epoch)-epochOfNextNegSample[edge])/epochsPerNegSample[edge]), 0)
 
 	// Perform negative sampling using the head vertex's RNG state
 	rng := &rngStatePerSample[j]

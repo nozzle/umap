@@ -54,7 +54,7 @@ func TestMT19937RNGState(t *testing.T) {
 	mt := rand.NewMT19937(42)
 
 	// Consume 30 uniform values (simulating init embedding generation)
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		_ = mt.Uniform(-10.0, 10.0)
 	}
 

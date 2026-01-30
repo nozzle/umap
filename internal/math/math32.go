@@ -124,7 +124,7 @@ func NormSquared(vec []float32) float32 {
 func Dot(a, b []float32) float32 {
 	var sum float32
 	n := min(len(b), len(a))
-	for i := 0; i < n; i++ {
+	for i := range n {
 		sum += a[i] * b[i]
 	}
 	return sum
