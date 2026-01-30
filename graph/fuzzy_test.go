@@ -111,19 +111,19 @@ func TestCSRMatrixGetRow(t *testing.T) {
 	}
 
 	// Get row 0
-	indices, data := graph.GetRow(0)
+	indices, _ := graph.GetRow(0)
 	if len(indices) != 2 {
 		t.Errorf("Row 0 should have 2 elements, got %d", len(indices))
 	}
 
 	// Get row 1
-	indices, data = graph.GetRow(1)
+	indices, _ = graph.GetRow(1)
 	if len(indices) != 2 {
 		t.Errorf("Row 1 should have 2 elements, got %d", len(indices))
 	}
 
 	// Get row 2
-	indices, data = graph.GetRow(2)
+	indices, data := graph.GetRow(2)
 	if len(indices) != 1 {
 		t.Errorf("Row 2 should have 1 element, got %d", len(indices))
 	}

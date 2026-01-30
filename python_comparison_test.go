@@ -44,8 +44,8 @@ func TestPythonComparison(t *testing.T) {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
 	pythonOutputPath := pythonOutput.Name()
-	pythonOutput.Close()
-	defer os.Remove(pythonOutputPath)
+	_ = pythonOutput.Close()
+	defer func() { _ = os.Remove(pythonOutputPath) }()
 
 	// Test parameters - use same seed and parameters for both implementations
 	params := struct {
@@ -179,7 +179,7 @@ func loadCSV(filename string) ([][]float32, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	reader := csv.NewReader(file)
 	records, err := reader.ReadAll()

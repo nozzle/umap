@@ -115,21 +115,6 @@ func abs32(x float32) float32 {
 	return x
 }
 
-func max32(a, b float32) float32 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func exp32(x float32) float32 {
-	return float32(math.Exp(float64(x)))
-}
-
-func log32(x float32) float32 {
-	return float32(math.Log(float64(x)))
-}
-
 func sign32(x float32) float32 {
 	if x < 0 {
 		return -1

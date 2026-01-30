@@ -281,11 +281,7 @@ func OptimizeLayout(
 			epochOfNextSample[edge] += epochsPerSample[edge]
 
 			// Negative sampling
-			for {
-				if float32(epoch) < epochOfNextNegSample[edge] {
-					break
-				}
-
+			for float32(epoch) >= epochOfNextNegSample[edge] {
 				// Sample random negative
 				k := rand.Intn(rng, n)
 				if k == i || k == j {

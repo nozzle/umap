@@ -286,12 +286,7 @@ func tryUpdateNeighbors(
 ) bool {
 	dist := distFunc(data[i], data[j])
 
-	updated := false
-
-	// Try to add j as neighbor of i
-	if heap.FlaggedHeapPush(indices[i], distances[i], flags[i], k, int32(j), dist, 1) {
-		updated = true
-	}
+	updated := heap.FlaggedHeapPush(indices[i], distances[i], flags[i], k, int32(j), dist, 1)
 
 	// Try to add i as neighbor of j
 	if heap.FlaggedHeapPush(indices[j], distances[j], flags[j], k, int32(i), dist, 1) {
