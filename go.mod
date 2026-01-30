@@ -1,5 +1,5 @@
 module github.com/nozzle/umap
 
-go 1.21
+go 1.25
 
 require gonum.org/v1/gonum v0.14.0
